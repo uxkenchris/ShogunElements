@@ -1,0 +1,64 @@
+;(function($, SHGMoney) {
+  "use strict"
+
+  // TODO: Utility function/polyfill
+  var isInteger =
+    Number.isInteger ||
+    function(value) {
+      return typeof value === "number" && isFinite(value) && Math.floor(value) === value
+    }
+
+  window.__shgProductComponent.price = function(props, $data) {
+    var hasVariant = !!props.variant
+    var isOutOfStock = hasVariant && !props.variant.available
+    var moneyFormat = props.moneyFormat
+
+    // For product-level currencies, we expect the moneyFormat to return a
+    // default config and all possible configs on the currencies property
+    var productCurrency = props.variant && props.variant["price_currency"] && props.variant["price_currency"].toUpperCase()
+    if (productCurrency && moneyFormat.currencies && moneyFormat.currencies[productCurrency]) {
+      moneyFormat.config = moneyFormat.currencies[productCurrency]
+    }
+
+    function priceContent(price) {
+      if (price === null || price === undefined) return ""
+
+      var output = isInteger(price) ? (price / 100).toFixed(2) : price
+
+      var formatter = new window.SHGMoney(moneyFormat.type, moneyFormat.config)
+      return formatter.formatMoney(output)
+    }
+
+    if (isOutOfStock) {
+      var refElement = $data("sold-out").show()
+      $data("price").hide()
+      $data("compare-price").hide()
+
+      if (props.product.vendor == 'ACP' &&  !$(refElement).parent().parent().find('.availability').length) {
+        $(refElement).parent().after('<div class="availability">It will be available in 4-5 weeks</div>');
+      }
+    } else if (hasVariant) {
+      var refElement = $data("sold-out").hide()
+      $data("price")
+        .html(priceContent(props.variant.price))
+        .show()
+      if (props.meta.hasComparePrice && props.variant.compare_at_price) {
+        $data("compare-price")
+          .html(priceContent(props.variant.compare_at_price))
+          .show()
+      } else {
+        $data("compare-price")
+          .html(priceContent(props.variant.compare_at_price))
+          .hide()
+      }
+
+      if (!$(refElement).parent().parent().find('.in-stock').length) {
+        $(refElement).parent().after('<div class="in-stock">In stock</div>')
+      }
+    } else {
+      $data("sold-out").hide()
+      $data("price").hide()
+      $data("compare-price").hide()
+    }
+  }
+})(window.SHGJQ, window.SHGMoney)
